@@ -1,0 +1,7 @@
+Flask==3.0.0
+Flask-Login==0.6.3
+Flask-SQLAlchemy==3.1.1
+pyone==6.8.0
+Werkzeug==3.0.1
+gunicorn==21.2.0
+paramiko==3.4.0

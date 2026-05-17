@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Research Cloud Portal{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <a href="{{ url_for('portal.new_job') }}" class="btn btn-primary" id="new-job-btn">
+            <span class="btn-icon">➕</span>
+            <span class="btn-text">New Compute Job</span>
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card glass-card">
+            <div class="stat-icon stat-total">📋</div>
+            <div class="stat-info">
+                <span class="stat-value" data-count="{{ stats.total }}">{{ stats.total }}</span>
+                <span class="stat-label">Total Jobs</span>
+            </div>
+        </div>
+        <div class="stat-card glass-card">
+            <div class="stat-icon stat-running">⚡</div>
+            <div class="stat-info">
+                <span class="stat-value" data-count="{{ stats.running }}">{{ stats.running }}</span>
+                <span class="stat-label">Active</span>
+            </div>
+        </div>
+        <div class="stat-card glass-card">
+            <div class="stat-icon stat-completed">✅</div>
+            <div class="stat-info">
+                <span class="stat-value" data-count="{{ stats.completed }}">{{ stats.completed }}</span>
+                <span class="stat-label">Completed</span>
+            </div>
+        </div>
+        <div class="stat-card glass-card">
+            <div class="stat-icon stat-failed">❌</div>
+            <div class="stat-info">
+                <span class="stat-value" data-count="{{ stats.failed }}">{{ stats.failed }}</span>
+                <span class="stat-label">Failed</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Jobs List -->
+    <div class="section-header">
+        <h2>Your Jobs</h2>
+    </div>
+
+    {% if jobs %}
+    <div class="jobs-grid">
+        {% for job in jobs %}
+        <a href="{{ url_for('portal.job_detail', job_id=job.id) }}" class="job-card glass-card" id="job-card-{{ job.id }}">
+            <div class="job-card-header">
+                <span class="job-id">#{{ job.id }}</span>
+                <span class="status-badge {{ job.status_color }}">
+                    <span class="status-dot"></span>
+                    {{ job.status_icon }} {{ job.status | capitalize }}
+                </span>
+            </div>
+            <div class="job-card-body">
+                <h3 class="job-name">{{ job.vm_name or 'Unnamed Job' }}</h3>
+                <div class="job-meta">
+                    <div class="job-meta-item">
+                        <span class="meta-icon">🖥️</span>
+                        <span>{{ os_images[job.os_image].name if job.os_image in os_images else job.os_image }}</span>
+                    </div>
+                    <div class="job-meta-item">
+                        <span class="meta-icon">⚙️</span>
+                        <span>{{ job.cpu }} CPU · {{ job.ram_display }}</span>
+                    </div>
+                    <div class="job-meta-item">
+                        <span class="meta-icon">📦</span>
+                        <span>{{ config.SOFTWARE_STACKS[job.software_stack].name if job.software_stack in config.SOFTWARE_STACKS else job.software_stack }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="job-card-footer">
+                <span class="job-time">{{ job.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+                <span class="job-arrow">→</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state glass-card">
+        <div class="empty-icon">🔬</div>
+        <h3>No compute jobs yet</h3>
+        <p>Create your first compute job to get started with cloud-based research computing.</p>
+        <a href="{{ url_for('portal.new_job') }}" class="btn btn-primary" id="empty-new-job-btn">
+            <span>Create Your First Job</span>
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

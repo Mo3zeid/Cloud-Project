@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Job #{{ job.id }} — Research Cloud Portal{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <div>
+            <a href="{{ url_for('portal.dashboard') }}" class="back-link">← Back to Dashboard</a>
+            <h1 class="page-title">Job #{{ job.id }}</h1>
+        </div>
+        <div class="header-actions">
+            {% if job.status in ('pending', 'provisioning', 'running') %}
+            <form method="POST" action="{{ url_for('portal.terminate_job', job_id=job.id) }}"
+                  onsubmit="return confirm('Are you sure you want to terminate this job?')">
+                <button type="submit" class="btn btn-danger" id="terminate-btn">
+                    <span class="btn-icon">⏹️</span> Terminate
+                </button>
+            </form>
+            {% endif %}
+            {% if job.status == 'completed' and job.result_path %}
+            <a href="{{ url_for('portal.download_result', job_id=job.id) }}" class="btn btn-primary" id="download-btn">
+                <span class="btn-icon">📥</span> Download Results
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status Banner -->
+    <div class="status-banner glass-card {{ job.status_color }}" id="status-banner">
+        <div class="status-main">
+            <span class="status-icon-large">{{ job.status_icon }}</span>
+            <div>
+                <h2 class="status-text" id="job-status-text">{{ job.status | capitalize }}</h2>
+                <p class="status-sub" id="job-status-sub">
+                    {% if job.status == 'pending' %}
+                        Waiting in queue for provisioning...
+                    {% elif job.status == 'provisioning' %}
+                        Setting up your virtual machine...
+                    {% elif job.status == 'running' %}
+                        Executing your workload on the cloud...
+                    {% elif job.status == 'completed' %}
+                        Your results are ready for download!
+                    {% elif job.status == 'failed' %}
+                        {{ job.error_message or 'An error occurred during execution.' }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        {% if job.status in ('pending', 'provisioning', 'running') %}
+        <div class="status-spinner">
+            <div class="spinner"></div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Job Details Grid -->
+    <div class="detail-grid">
+        <!-- Configuration Card -->
+        <div class="detail-card glass-card">
+            <h3 class="detail-title">
+                <span class="detail-icon">⚙️</span> Configuration
+            </h3>
+            <div class="detail-list">
+                <div class="detail-row">
+                    <span class="detail-label">VM Name</span>
+                    <span class="detail-value">{{ job.vm_name }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Operating System</span>
+                    <span class="detail-value">
+                        {% if job.os_image in os_images %}
+                            {{ os_images[job.os_image].icon }} {{ os_images[job.os_image].name }}
+                        {% else %}
+                            {{ job.os_image }}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">CPU Cores</span>
+                    <span class="detail-value">{{ job.cpu }} {{ 'Core' if job.cpu == 1 else 'Cores' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Memory</span>
+                    <span class="detail-value">{{ job.ram_display }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Storage</span>
+                    <span class="detail-value">{{ job.storage }} GB</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">GPU</span>
+                    <span class="detail-value">{{ '✅ Enabled' if job.gpu else '❌ Disabled' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Software Stack</span>
+                    <span class="detail-value">
+                        {% if job.software_stack in software_stacks %}
+                            {{ software_stacks[job.software_stack].icon }} {{ software_stacks[job.software_stack].name }}
+                        {% else %}
+                            {{ job.software_stack }}
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- VM Info Card -->
+        <div class="detail-card glass-card">
+            <h3 class="detail-title">
+                <span class="detail-icon">☁️</span> Cloud Resources
+            </h3>
+            <div class="detail-list">
+                <div class="detail-row">
+                    <span class="detail-label">OpenNebula VM ID</span>
+                    <span class="detail-value" id="vm-id-value">{{ job.vm_id or 'Pending...' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">VM IP Address</span>
+                    <span class="detail-value" id="vm-ip-value">{{ job.vm_ip or 'Pending...' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Dataset</span>
+                    <span class="detail-value">{{ job.dataset_filename or 'No dataset uploaded' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Created</span>
+                    <span class="detail-value">{{ job.created_at.strftime('%b %d, %Y at %H:%M:%S') }}</span>
+                </div>
+                {% if job.completed_at %}
+                <div class="detail-row">
+                    <span class="detail-label">Completed</span>
+                    <span class="detail-value">{{ job.completed_at.strftime('%b %d, %Y at %H:%M:%S') }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Timeline -->
+    <div class="timeline-card glass-card">
+        <h3 class="detail-title">
+            <span class="detail-icon">📋</span> Activity Timeline
+        </h3>
+        <div class="timeline">
+            <div class="timeline-item completed">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <span class="timeline-title">Job Created</span>
+                    <span class="timeline-time">{{ job.created_at.strftime('%H:%M:%S') }}</span>
+                </div>
+            </div>
+            <div class="timeline-item {{ 'completed' if job.status in ('provisioning', 'running', 'completed') else 'pending' }}">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <span class="timeline-title">VM Provisioning</span>
+                    <span class="timeline-time">Allocating resources via OpenNebula</span>
+                </div>
+            </div>
+            <div class="timeline-item {{ 'completed' if job.status in ('running', 'completed') else 'pending' }}">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <span class="timeline-title">Workload Running</span>
+                    <span class="timeline-time">Executing {{ software_stacks[job.software_stack].name if job.software_stack in software_stacks else job.software_stack }} stack</span>
+                </div>
+            </div>
+            <div class="timeline-item {{ 'completed' if job.status == 'completed' else 'failed' if job.status == 'failed' else 'pending' }}">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <span class="timeline-title">{{ 'Completed' if job.status == 'completed' else 'Failed' if job.status == 'failed' else 'Results Ready' }}</span>
+                    <span class="timeline-time">
+                        {% if job.completed_at %}
+                            {{ job.completed_at.strftime('%H:%M:%S') }}
+                        {% else %}
+                            Waiting...
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if job.status in ('pending', 'provisioning', 'running') %}
+<script>
+    // Poll for status updates every 3 seconds
+    const JOB_ID = {{ job.id }};
+    pollJobStatus(JOB_ID);
+</script>
+{% endif %}
+{% endblock %}

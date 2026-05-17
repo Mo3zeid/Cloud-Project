@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}New Compute Job — Research Cloud Portal{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1 class="page-title">New Compute Job</h1>
+        <p class="page-subtitle">Configure your cloud computing environment step by step</p>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="wizard-progress">
+        <div class="progress-step active" data-step="1">
+            <div class="step-circle">1</div>
+            <span class="step-label">OS Image</span>
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="2">
+            <div class="step-circle">2</div>
+            <span class="step-label">Compute</span>
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="3">
+            <div class="step-circle">3</div>
+            <span class="step-label">Software</span>
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="4">
+            <div class="step-circle">4</div>
+            <span class="step-label">Dataset</span>
+        </div>
+        <div class="progress-line"></div>
+        <div class="progress-step" data-step="5">
+            <div class="step-circle">5</div>
+            <span class="step-label">Review</span>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('portal.submit_job') }}" enctype="multipart/form-data" id="job-wizard-form">
+        <!-- Step 1: OS Image Selection -->
+        <div class="wizard-step active" id="step-1">
+            <div class="step-header">
+                <h2>Select Operating System</h2>
+                <p>Choose the base operating system for your virtual machine</p>
+            </div>
+            <div class="option-grid os-grid">
+                {% for key, os in os_images.items() %}
+                <label class="option-card glass-card" for="os-{{ key }}" id="os-option-{{ key }}">
+                    <input type="radio" name="os_image" value="{{ key }}" id="os-{{ key }}"
+                           {% if loop.first %}checked{% endif %} required>
+                    <div class="option-content">
+                        <span class="option-icon">{{ os.icon }}</span>
+                        <h3>{{ os.name }}</h3>
+                        <p>{{ os.description }}</p>
+                    </div>
+                    <div class="option-check">✓</div>
+                </label>
+                {% endfor %}
+            </div>
+            <div class="wizard-nav">
+                <div></div>
+                <button type="button" class="btn btn-primary wizard-next" onclick="wizardNext()">
+                    Next: Compute Config <span class="btn-icon">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 2: Compute Configuration -->
+        <div class="wizard-step" id="step-2">
+            <div class="step-header">
+                <h2>Compute Configuration</h2>
+                <p>Select the processing power for your workload</p>
+            </div>
+
+            <div class="config-section">
+                <h3 class="config-label">
+                    <span class="config-icon">🧠</span> CPU Cores
+                </h3>
+                <div class="slider-options">
+                    {% for cpu in cpu_options %}
+                    <label class="slider-option" for="cpu-{{ cpu }}" id="cpu-option-{{ cpu }}">
+                        <input type="radio" name="cpu" value="{{ cpu }}" id="cpu-{{ cpu }}"
+                               {% if cpu == 2 %}checked{% endif %} required>
+                        <div class="slider-value">
+                            <span class="value-number">{{ cpu }}</span>
+                            <span class="value-unit">{{ 'Core' if cpu == 1 else 'Cores' }}</span>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3 class="config-label">
+                    <span class="config-icon">💾</span> Memory (RAM)
+                </h3>
+                <div class="slider-options">
+                    {% for ram in ram_options %}
+                    <label class="slider-option" for="ram-{{ ram.value }}" id="ram-option-{{ ram.value }}">
+                        <input type="radio" name="ram" value="{{ ram.value }}" id="ram-{{ ram.value }}"
+                               {% if ram.value == 2048 %}checked{% endif %} required>
+                        <div class="slider-value">
+                            <span class="value-number">{{ ram.label }}</span>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3 class="config-label">
+                    <span class="config-icon">💽</span> Storage (Disk)
+                </h3>
+                <div class="slider-options">
+                    {% for storage in config['STORAGE_OPTIONS'] %}
+                    <label class="slider-option" for="storage-{{ storage.value }}" id="storage-option-{{ storage.value }}">
+                        <input type="radio" name="storage" value="{{ storage.value }}" id="storage-{{ storage.value }}"
+                               {% if storage.value == 10 %}checked{% endif %} required>
+                        <div class="slider-value">
+                            <span class="value-number">{{ storage.label }}</span>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3 class="config-label">
+                    <span class="config-icon">🎮</span> GPU Acceleration
+                </h3>
+                <label class="toggle-option glass-card" for="gpu-toggle" id="gpu-option">
+                    <div class="toggle-info">
+                        <h4>Enable GPU</h4>
+                        <p>Add a virtual GPU for accelerated computing (ML, rendering)</p>
+                    </div>
+                    <div class="toggle-switch">
+                        <input type="checkbox" name="gpu" id="gpu-toggle">
+                        <span class="toggle-slider"></span>
+                    </div>
+                </label>
+            </div>
+
+            <div class="wizard-nav">
+                <button type="button" class="btn btn-outline wizard-prev" onclick="wizardPrev()">
+                    <span class="btn-icon">←</span> Back
+                </button>
+                <button type="button" class="btn btn-primary wizard-next" onclick="wizardNext()">
+                    Next: Software Stack <span class="btn-icon">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 3: Software Stack -->
+        <div class="wizard-step" id="step-3">
+            <div class="step-header">
+                <h2>Software Stack</h2>
+                <p>Select the research environment for your workload</p>
+            </div>
+            <div class="option-grid software-grid">
+                {% for key, stack in software_stacks.items() %}
+                <label class="option-card glass-card" for="stack-{{ key }}" id="stack-option-{{ key }}">
+                    <input type="radio" name="software_stack" value="{{ key }}" id="stack-{{ key }}"
+                           {% if loop.first %}checked{% endif %} required>
+                    <div class="option-content">
+                        <span class="option-icon">{{ stack.icon }}</span>
+                        <h3>{{ stack.name }}</h3>
+                        <p>{{ stack.description }}</p>
+                        <span class="package-info">{{ stack.packages }}</span>
+                    </div>
+                    <div class="option-check">✓</div>
+                </label>
+                {% endfor %}
+            </div>
+            <div class="wizard-nav">
+                <button type="button" class="btn btn-outline wizard-prev" onclick="wizardPrev()">
+                    <span class="btn-icon">←</span> Back
+                </button>
+                <button type="button" class="btn btn-primary wizard-next" onclick="wizardNext()">
+                    Next: Upload Dataset <span class="btn-icon">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 4: Dataset Upload -->
+        <div class="wizard-step" id="step-4">
+            <div class="step-header">
+                <h2>Upload Dataset</h2>
+                <p>Upload the data files for your computation (optional)</p>
+            </div>
+            <div class="upload-area glass-card" id="upload-area">
+                <div class="upload-content">
+                    <span class="upload-icon">📁</span>
+                    <h3>Drag & Drop your dataset</h3>
+                    <p>or click to browse files</p>
+                    <span class="upload-hint">Supports CSV, JSON, TXT, ZIP, TAR.GZ — Max 500 MB</span>
+                </div>
+                <input type="file" name="dataset" id="dataset-input" class="upload-input"
+                       accept=".csv,.json,.txt,.zip,.tar.gz,.xlsx,.parquet,.h5,.mat,.npy">
+                <div class="upload-preview" id="upload-preview" style="display:none;">
+                    <span class="preview-icon">📄</span>
+                    <span class="preview-name" id="preview-filename"></span>
+                    <span class="preview-size" id="preview-filesize"></span>
+                    <button type="button" class="preview-remove" id="remove-file" onclick="removeFile()">&times;</button>
+                </div>
+            </div>
+            <div class="wizard-nav">
+                <button type="button" class="btn btn-outline wizard-prev" onclick="wizardPrev()">
+                    <span class="btn-icon">←</span> Back
+                </button>
+                <button type="button" class="btn btn-primary wizard-next" onclick="wizardNext()">
+                    Next: Review <span class="btn-icon">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 5: Review & Submit -->
+        <div class="wizard-step" id="step-5">
+            <div class="step-header">
+                <h2>Review & Submit</h2>
+                <p>Review your configuration before launching the compute job</p>
+            </div>
+            <div class="review-card glass-card">
+                <div class="review-grid">
+                    <div class="review-item">
+                        <span class="review-label">Operating System</span>
+                        <span class="review-value" id="review-os">—</span>
+                    </div>
+                    <div class="review-item">
+                        <span class="review-label">CPU Cores</span>
+                        <span class="review-value" id="review-cpu">—</span>
+                    </div>
+                    <div class="review-item">
+                        <span class="review-label">Memory</span>
+                        <span class="review-value" id="review-ram">—</span>
+                    </div>
+                    <div class="review-item">
+                        <span class="review-label">Storage</span>
+                        <span class="review-value" id="review-storage">—</span>
+                    </div>
+                    <div class="review-item">
+                        <span class="review-label">GPU</span>
+                        <span class="review-value" id="review-gpu">—</span>
+                    </div>
+                    <div class="review-item">
+                        <span class="review-label">Software Stack</span>
+                        <span class="review-value" id="review-stack">—</span>
+                    </div>
+                    <div class="review-item">
+                        <span class="review-label">Dataset</span>
+                        <span class="review-value" id="review-dataset">—</span>
+                    </div>
+                </div>
+            </div>
+            <div class="wizard-nav">
+                <button type="button" class="btn btn-outline wizard-prev" onclick="wizardPrev()">
+                    <span class="btn-icon">←</span> Back
+                </button>
+                <button type="submit" class="btn btn-primary btn-launch" id="submit-job-btn">
+                    <span class="btn-icon">🚀</span>
+                    <span class="btn-text">Launch Compute Job</span>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
